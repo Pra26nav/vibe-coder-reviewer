@@ -1,0 +1,110 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.5rem;
+  --background: #F6F5F1;
+  --foreground: #1C2430;
+  --card: #FFFFFF;
+  --card-foreground: #1C2430;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C2430;
+  --primary: #2F5F8A;
+  --primary-foreground: #F6F5F1;
+  --secondary: #EAE8E1;
+  --secondary-foreground: #1C2430;
+  --muted: #EAE8E1;
+  --muted-foreground: #5C6470;
+  --accent: #EAE8E1;
+  --accent-foreground: #2F5F8A;
+  --destructive: #B23B3B;
+  --border: #DAD7CD;
+  --input: #DAD7CD;
+  --ring: #2F5F8A;
+
+  --color-critical: #B23B3B;
+  --color-warning: #C8781E;
+  --color-clear: #3F7D58;
+  --color-blueprint: #2F5F8A;
+}
+
+.dark {
+  --background: #14181F;
+  --foreground: #ECEAE3;
+  --card: #1C2430;
+  --card-foreground: #ECEAE3;
+  --popover: #1C2430;
+  --popover-foreground: #ECEAE3;
+  --primary: #5C9CCB;
+  --primary-foreground: #14181F;
+  --secondary: #232B38;
+  --secondary-foreground: #ECEAE3;
+  --muted: #232B38;
+  --muted-foreground: #8B93A0;
+  --accent: #232B38;
+  --accent-foreground: #5C9CCB;
+  --destructive: #D96565;
+  --border: #2A3340;
+  --input: #2A3340;
+  --ring: #5C9CCB;
+}
+
+@theme inline {
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-critical: var(--color-critical);
+  --color-warning: var(--color-warning);
+  --color-clear: var(--color-clear);
+  --color-blueprint: var(--color-blueprint);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+.blueprint-grid {
+  background-image:
+    linear-gradient(rgba(47, 95, 138, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(47, 95, 138, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+@keyframes stamp-in {
+  0% { transform: scale(1.4) rotate(-8deg); opacity: 0; }
+  60% { transform: scale(0.95) rotate(-8deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-8deg); opacity: 1; }
+}
+.animate-stamp {
+  animation: stamp-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
