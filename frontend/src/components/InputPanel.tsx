@@ -30,6 +30,7 @@ export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPan
   const [purpose, setPurpose] = useState<Purpose | null>(null);
   const [showCustom, setShowCustom] = useState(false);
   const [customPurpose, setCustomPurpose] = useState("");
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activePlatform = PLATFORMS.find((p) => p.id === platform)!;
@@ -44,6 +45,13 @@ export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPan
     if (file) onSubmitFile(file, purpose);
   };
 
+  const handleDrop = (e: React.DragEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.name.endsWith(".zip")) onSubmitFile(file, purpose);
+  };
+
   return (
     <div className="w-full max-w-xl mx-auto space-y-6">
       <div>
@@ -56,13 +64,13 @@ export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPan
               <button
                 key={p.id}
                 onClick={() => setPlatform(p.id)}
-                className={`flex flex-col items-center gap-1.5 rounded-md border px-3 py-3 text-sm transition-colors ${
+                className={`flex flex-col items-center gap-1.5 rounded-md border px-3 py-3 text-sm transition-all duration-150 ${
                   active
-                    ? "border-primary bg-accent text-accent-foreground"
-                    : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                    ? "border-primary bg-accent text-accent-foreground shadow-sm scale-[1.02]"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:shadow-sm hover:-translate-y-0.5"
                 }`}
               >
-                <Icon size={18} />
+                <Icon size={18} className={active ? "" : "transition-transform"} />
                 {p.label}
               </button>
             );
@@ -71,7 +79,7 @@ export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPan
       </div>
 
       {activePlatform.needsExport && (
-        <p className="text-sm text-muted-foreground bg-secondary rounded-md px-3 py-2">
+        <p className="text-sm text-muted-foreground bg-secondary rounded-md px-3 py-2 animate-fade-in-up opacity-0">
           We'll clone from your exported GitHub repo — export {activePlatform.label} projects to GitHub first if you haven't.
         </p>
       )}
@@ -83,13 +91,18 @@ export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPan
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
           disabled={isSubmitting}
+          className="transition-shadow focus-visible:shadow-sm"
         />
-        <Button onClick={handleSubmit} disabled={isSubmitting || !url.trim()}>
+        <Button
+          onClick={handleSubmit}
+          disabled={isSubmitting || !url.trim()}
+          className="transition-transform active:scale-95 disabled:active:scale-100"
+        >
           Scan <ArrowRight size={16} />
         </Button>
       </div>
 
-            <div>
+      <div>
         <p className="text-xs text-muted-foreground mb-2">What's this project for? (optional — helps tailor suggestions)</p>
         <div className="flex flex-wrap gap-2">
           {PURPOSES.map((p) => (
@@ -105,10 +118,10 @@ export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPan
                   setPurpose(purpose === p.id ? null : p.id);
                 }
               }}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              className={`text-xs px-3 py-1.5 rounded-full border transition-all duration-150 ${
                 (p.id === "other" ? showCustom : purpose === p.id)
                   ? "border-primary bg-accent text-accent-foreground"
-                  : "border-border text-muted-foreground hover:border-primary/40"
+                  : "border-border text-muted-foreground hover:border-primary/40 hover:-translate-y-0.5"
               }`}
             >
               {p.label}
@@ -117,7 +130,7 @@ export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPan
         </div>
 
         {showCustom && (
-          <div className="mt-2 space-y-1.5">
+          <div className="mt-2 space-y-1.5 animate-fade-in-up opacity-0">
             <input
               type="text"
               list="purpose-suggestions"
@@ -127,7 +140,7 @@ export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPan
                 setPurpose(e.target.value || "other");
               }}
               placeholder="e.g. education, portfolio, internal tool..."
-              className="w-full text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground"
+              className="w-full text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground transition-shadow focus-visible:shadow-sm"
             />
             <datalist id="purpose-suggestions">
               <option value="education" />
@@ -148,11 +161,21 @@ export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPan
 
       <button
         onClick={() => fileInputRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
         disabled={isSubmitting}
-        className="w-full flex items-center justify-center gap-2 rounded-md border border-dashed border-border py-4 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
+        className={`w-full flex items-center justify-center gap-2 rounded-md border border-dashed py-4 text-sm transition-all duration-150 ${
+          dragOver
+            ? "border-primary bg-accent text-accent-foreground scale-[1.01]"
+            : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+        }`}
       >
         <Upload size={16} />
-        Upload a .zip
+        {dragOver ? "Drop to upload" : "Upload a .zip"}
       </button>
       <input ref={fileInputRef} type="file" accept=".zip" className="hidden" onChange={handleFileChange} />
     </div>
