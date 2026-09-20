@@ -20,6 +20,13 @@ export interface FileEntry {
 
 export type ScanStatus = "queued" | "cloning" | "analyzing" | "done" | "failed";
 
+export interface Recommendation {
+  title: string;
+  effort: string;
+  impact: "low" | "medium" | "high";
+  prompt: string;
+}
+
 export interface ScanReport {
   job_id: string;
   status: ScanStatus;
@@ -31,7 +38,7 @@ export interface ScanReport {
   files_scanned: number;
   error: string | null;
   purpose: string | null;
-  recommendations: string[];
+  recommendations: Recommendation[];
 }
 
 export type Purpose = "business" | "project" | "entertainment" | "other" | (string & {});

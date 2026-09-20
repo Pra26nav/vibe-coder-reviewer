@@ -126,15 +126,20 @@ enhance their existing project inside tools like Lovable, Replit, or Bolt.
 You'll get: a list of files with their architecture role, and the stated purpose of the project
 (business, project/portfolio, entertainment, or other - may be missing).
 
-Return ONLY a JSON array of 4-6 strings, no prose, no markdown fences. Each string is a complete,
-specific prompt the user could paste directly into their AI coding tool - not generic advice.
-Tailor prompts to the actual roles present (e.g. if there's an auth file, suggest a prompt about
-adding password reset; if it's a business/commerce purpose, suggest a prompt about adding payment
-receipts or admin analytics). If purpose is missing, keep prompts general-purpose but still specific
-to the files given."""
+Return ONLY a JSON array of 4-6 objects, no prose, no markdown fences. Each object:
+{
+  "title": "short 3-6 word name for the enhancement",
+  "effort": "a rough time estimate like '15 mins' or '1-2 hours'",
+  "impact": "low" | "medium" | "high",
+  "prompt": "a complete, specific prompt the user could paste directly into their AI coding tool"
+}
+
+Tailor to the actual roles present (e.g. if there's an auth file, suggest password reset; if it's a
+business/commerce purpose, suggest payment receipts or admin analytics). If purpose is missing, keep
+prompts general-purpose but still specific to the files given. Order by impact, highest first."""
 
 
-def generate_recommendations(files: list, purpose: str | None) -> list[str]:
+def generate_recommendations(files: list, purpose: str | None) -> list[dict]:
     if not files:
         return []
 
@@ -148,7 +153,7 @@ def generate_recommendations(files: list, purpose: str | None) -> list[str]:
             {"role": "user", "content": user_content},
         ],
         temperature=0.5,
-        max_tokens=1000,
+        max_tokens=1500,
     )
 
     raw = resp.choices[0].message.content.strip()
@@ -156,7 +161,16 @@ def generate_recommendations(files: list, purpose: str | None) -> list[str]:
 
     try:
         parsed = json.loads(raw)
-        return [str(p) for p in parsed][:6]
+        valid = []
+        for item in parsed[:6]:
+            if isinstance(item, dict) and "title" in item and "prompt" in item:
+                valid.append({
+                    "title": str(item.get("title", "")),
+                    "effort": str(item.get("effort", "")),
+                    "impact": item.get("impact") if item.get("impact") in ("low", "medium", "high") else "medium",
+                    "prompt": str(item.get("prompt", "")),
+                })
+        return valid
     except json.JSONDecodeError:
         print(f"[generate_recommendations] JSON PARSE FAILED. Raw response was:\n{raw[:500]}")
         return []

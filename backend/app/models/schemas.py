@@ -32,6 +32,13 @@ class FileNode(BaseModel):
     role: Literal["frontend", "backend-api", "auth", "db", "config", "other"]
     imports: list[str] = []
 
+class Recommendation(BaseModel):
+    title: str
+    effort: str
+    impact: Literal["low", "medium", "high"]
+    prompt: str
+
+
 class ScanReport(BaseModel):
     job_id: str
     status: Literal["queued", "cloning", "scanning", "analyzing", "done", "failed"]
@@ -43,5 +50,5 @@ class ScanReport(BaseModel):
     files_scanned: int = 0
     error: Optional[str] = None
     purpose: Optional[str] = None
-    recommendations: list[str] = []
+    recommendations: list[Recommendation] = []
     repo_url: Optional[str] = None

@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldX, Copy, Check, Zap } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FindingCard } from "@/components/FindingCard";
 import { ArchitectureTab } from "@/components/ArchitectureTab";
 import { getRecommendations } from "@/api/client";
-import type { ScanReport, Purpose } from "@/types";
+import type { ScanReport, Purpose, Recommendation } from "@/types";
 
 function verdictColor(score: number) {
   if (score >= 7) return "text-[color:var(--color-clear)] border-[color:var(--color-clear)]";
@@ -18,12 +18,66 @@ function VerdictIcon({ score }: { score: number }) {
   return <ShieldX size={16} />;
 }
 
+const IMPACT_STYLES: Record<string, string> = {
+  high: "bg-[color:var(--color-clear)]/10 text-[color:var(--color-clear)] border-[color:var(--color-clear)]/30",
+  medium: "bg-[color:var(--color-warning)]/10 text-[color:var(--color-warning)] border-[color:var(--color-warning)]/30",
+  low: "bg-muted text-muted-foreground border-border",
+};
+
 const PURPOSES: { id: Purpose; label: string }[] = [
   { id: "business", label: "Business" },
   { id: "project", label: "Project" },
   { id: "entertainment", label: "Entertainment" },
   { id: "other", label: "Other" },
 ];
+
+function RecommendationCard({ rec, index }: { rec: Recommendation; index: number }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(rec.prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  return (
+    <div
+      style={{ animationDelay: `${index * 60}ms` }}
+      className="animate-fade-in-up opacity-0 border border-border rounded-md bg-card p-4 space-y-2.5 transition-shadow hover:shadow-md"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Zap size={14} className="text-primary shrink-0" />
+          <p className="font-medium text-foreground text-sm">{rec.title}</p>
+        </div>
+        <span className={`text-xs px-2 py-0.5 rounded-full border capitalize shrink-0 ${IMPACT_STYLES[rec.impact]}`}>
+          {rec.impact} impact
+        </span>
+      </div>
+
+      {rec.effort && (
+        <p className="text-xs text-muted-foreground">Est. effort: {rec.effort}</p>
+      )}
+
+      <div className="relative">
+        <p className="text-sm text-foreground font-mono bg-secondary rounded-md p-3 pr-9 leading-relaxed">
+          {rec.prompt}
+        </p>
+        <button
+          onClick={handleCopy}
+          title="Copy prompt"
+          className="absolute top-2 right-2 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
+        >
+          {copied ? <Check size={13} /> : <Copy size={13} />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function ReportView({
   report,
@@ -39,7 +93,7 @@ export function ReportView({
   const [purpose, setPurpose] = useState<Purpose | null>(initialPurpose ?? null);
   const [showCustom, setShowCustom] = useState(false);
   const [customPurpose, setCustomPurpose] = useState("");
-  const [recs, setRecs] = useState<string[]>(report.recommendations || []);
+  const [recs, setRecs] = useState<Recommendation[]>(report.recommendations || []);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [fetchedOnce, setFetchedOnce] = useState(false);
 
@@ -107,11 +161,7 @@ export function ReportView({
             <p className="text-sm text-muted-foreground py-8 text-center">No issues found across the categories we check.</p>
           ) : (
             sortedFindings.map((f, i) => (
-              <div
-                key={f.id}
-                style={{ animationDelay: `${i * 80}ms` }}
-                className="animate-fade-in-up opacity-0"
-              >
+              <div key={f.id} style={{ animationDelay: `${i * 80}ms` }} className="animate-fade-in-up opacity-0">
                 <FindingCard finding={f} jobId={report.job_id} canApplyFix={!!report.repo_url} />
               </div>
             ))
@@ -203,15 +253,9 @@ export function ReportView({
           ) : recs.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">No suggestions available.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {recs.map((r, i) => (
-                <div
-                  key={i}
-                  style={{ animationDelay: `${i * 60}ms` }}
-                  className="animate-fade-in-up opacity-0 border border-border rounded-md p-3 bg-card hover:border-primary/40 transition-colors"
-                >
-                  <p className="text-sm text-foreground font-mono">{r}</p>
-                </div>
+                <RecommendationCard key={i} rec={r} index={i} />
               ))}
             </div>
           )}
