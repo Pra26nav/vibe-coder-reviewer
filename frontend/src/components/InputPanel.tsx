@@ -2,36 +2,46 @@ import { useState, useRef } from "react";
 import { Code2, Sparkles, Zap, Boxes, Upload, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import type { Platform } from "@/types";
+import type { Platform, Purpose } from "@/types";
 
-const PLATFORMS: { id: Platform; label: string; icon: typeof Github; needsExport: boolean }[] = [
+const PLATFORMS: { id: Platform; label: string; icon: typeof Code2; needsExport: boolean }[] = [
   { id: "github", label: "GitHub", icon: Code2, needsExport: false },
   { id: "lovable", label: "Lovable", icon: Sparkles, needsExport: true },
   { id: "replit", label: "Replit", icon: Boxes, needsExport: true },
   { id: "bolt", label: "Bolt", icon: Zap, needsExport: true },
 ];
 
+const PURPOSES: { id: Purpose; label: string }[] = [
+  { id: "business", label: "Business" },
+  { id: "project", label: "Project" },
+  { id: "entertainment", label: "Entertainment" },
+  { id: "other", label: "Other" },
+];
+
 interface InputPanelProps {
-  onSubmitUrl: (url: string) => void;
-  onSubmitFile: (file: File) => void;
+  onSubmitUrl: (url: string, purpose: Purpose | null) => void;
+  onSubmitFile: (file: File, purpose: Purpose | null) => void;
   isSubmitting: boolean;
 }
 
 export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPanelProps) {
   const [platform, setPlatform] = useState<Platform>("github");
   const [url, setUrl] = useState("");
+  const [purpose, setPurpose] = useState<Purpose | null>(null);
+  const [showCustom, setShowCustom] = useState(false);
+  const [customPurpose, setCustomPurpose] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activePlatform = PLATFORMS.find((p) => p.id === platform)!;
 
   const handleSubmit = () => {
     if (!url.trim()) return;
-    onSubmitUrl(url.trim());
+    onSubmitUrl(url.trim(), purpose);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) onSubmitFile(file);
+    if (file) onSubmitFile(file, purpose);
   };
 
   return (
@@ -77,6 +87,57 @@ export function InputPanel({ onSubmitUrl, onSubmitFile, isSubmitting }: InputPan
         <Button onClick={handleSubmit} disabled={isSubmitting || !url.trim()}>
           Scan <ArrowRight size={16} />
         </Button>
+      </div>
+
+            <div>
+        <p className="text-xs text-muted-foreground mb-2">What's this project for? (optional — helps tailor suggestions)</p>
+        <div className="flex flex-wrap gap-2">
+          {PURPOSES.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                if (p.id === "other") {
+                  setShowCustom(!showCustom);
+                  setPurpose(showCustom ? null : customPurpose || "other");
+                } else {
+                  setShowCustom(false);
+                  setPurpose(purpose === p.id ? null : p.id);
+                }
+              }}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                (p.id === "other" ? showCustom : purpose === p.id)
+                  ? "border-primary bg-accent text-accent-foreground"
+                  : "border-border text-muted-foreground hover:border-primary/40"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {showCustom && (
+          <div className="mt-2 space-y-1.5">
+            <input
+              type="text"
+              list="purpose-suggestions"
+              value={customPurpose}
+              onChange={(e) => {
+                setCustomPurpose(e.target.value);
+                setPurpose(e.target.value || "other");
+              }}
+              placeholder="e.g. education, portfolio, internal tool..."
+              className="w-full text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground"
+            />
+            <datalist id="purpose-suggestions">
+              <option value="education" />
+              <option value="portfolio" />
+              <option value="internal tool" />
+              <option value="hobby" />
+              <option value="research" />
+            </datalist>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">

@@ -8,6 +8,7 @@ export interface Finding {
   example: string;
   how_to_fix: string;
   fix_code_hint: string | null;
+  test_case: string | null;
   raw_snippet: string;
 }
 
@@ -29,6 +30,10 @@ export interface ScanReport {
   mermaid: string | null;
   files_scanned: number;
   error: string | null;
+  purpose: string | null;
+  recommendations: string[];
 }
+
+export type Purpose = "business" | "project" | "entertainment" | "other" | (string & {});
 
 export type Platform = "github" | "lovable" | "replit" | "bolt";

@@ -1,14 +1,15 @@
 import uuid
-from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, BackgroundTasks, UploadFile, File, Form, HTTPException, Request
 
 from app import storage
+from app.db import save_scan
 from app.services.cloner import clone_repo, extract_zip
 from app.services.file_filter import collect_files, read_file_safe
 from app.services.detectors import ALL_DETECTORS
-from app.services.llm_client import explain_batch
 from app.services.architecture import build_graph, to_mermaid
 from app.services.scoring import compute_score
 from app.models.schemas import ScanReport
+from app.services.llm_client import explain_batch, generate_recommendations
 
 router = APIRouter()
 
@@ -17,6 +18,7 @@ BATCH_SIZE = 4  # files per LLM explain call
 
 @router.post("/scan", response_model=ScanReport)
 async def start_scan(
+    request: Request,
     background_tasks: BackgroundTasks,
     repo_url: str | None = Form(None),
     file: UploadFile | None = File(None),
@@ -26,9 +28,13 @@ async def start_scan(
 
     job_id = str(uuid.uuid4())[:12]
     storage.create_job(job_id)
+    storage.update_job(job_id, repo_url=repo_url)
 
+
+    user_id = request.session.get("user_id")
+    print(f"[DEBUG] session user_id at scan start: {user_id}")
     zip_bytes = await file.read() if file else None
-    background_tasks.add_task(run_pipeline, job_id, repo_url, zip_bytes)
+    background_tasks.add_task(run_pipeline, job_id, repo_url, zip_bytes, user_id)
 
     return storage.get_job(job_id)
 
@@ -50,8 +56,19 @@ def get_report(job_id: str):
         raise HTTPException(409, f"job status is {job.status}, not done yet")
     return job
 
+@router.post("/recommendations/{job_id}", response_model=ScanReport)
+def get_recommendations(job_id: str, purpose: str | None = Form(None)):
+    job = storage.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "job not found")
+    if job.status != "done":
+        raise HTTPException(409, f"job status is {job.status}, not done yet")
 
-def run_pipeline(job_id: str, repo_url: str | None, zip_bytes: bytes | None):
+    recs = generate_recommendations(job.files, purpose)
+    storage.update_job(job_id, recommendations=recs, purpose=purpose)
+    return storage.get_job(job_id)
+
+def run_pipeline(job_id: str, repo_url: str | None, zip_bytes: bytes | None, user_id: int | None = None):
     try:
         storage.update_job(job_id, status="cloning")
         root = clone_repo(job_id, repo_url) if repo_url else extract_zip(job_id, zip_bytes)
@@ -71,8 +88,8 @@ def run_pipeline(job_id: str, repo_url: str | None, zip_bytes: bytes | None):
                 raw_hits.extend(hits)
 
         # 2. LLM confirm + explain, batched
-                storage.update_job(job_id, status="analyzing")
-                print(f"[{job_id}] raw regex/AST hits: {len(raw_hits)}")
+        storage.update_job(job_id, status="analyzing")
+        print(f"[{job_id}] raw regex/AST hits: {len(raw_hits)}")
         for h in raw_hits[:15]:
             print(f"  - [{h.category}] {h.file_path}:{h.line} | {h.snippet[:100]}")
         findings = []
@@ -101,5 +118,15 @@ def run_pipeline(job_id: str, repo_url: str | None, zip_bytes: bytes | None):
             mermaid=mermaid,
             files_scanned=len(contents),
         )
+
+        if user_id:
+            save_scan(
+                scan_id=job_id,
+                user_id=user_id,
+                repo_url=repo_url or "(zip upload)",
+                score=score,
+                verdict=verdict,
+                findings_count=len(findings),
+            )
     except Exception as e:
         storage.update_job(job_id, status="failed", error=str(e))

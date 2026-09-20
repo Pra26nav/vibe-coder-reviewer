@@ -20,7 +20,8 @@ no markdown fences. Each item:
   "plain_explanation": "one jargon-free sentence on the risk",
   "example": "You do X, an attacker does Y, Z happens - concrete walkthrough",
   "how_to_fix": "plain instruction, no code",
-  "fix_code_hint": "short code snippet showing the fix"
+  "fix_code_hint": "short code snippet showing the fix",
+  "test_case": "a concrete, non-technical way to check the fix actually worked - e.g. what input to try and what should happen instead of the vulnerable behavior"
 }
 Drop items where is_real_issue is false from your output entirely."""
 
@@ -81,6 +82,7 @@ def explain_batch(hits: list[RawHit]) -> list[Finding]:
                 example=item.get("example", ""),
                 how_to_fix=item.get("how_to_fix", ""),
                 fix_code_hint=item.get("fix_code_hint"),
+                test_case=item.get("test_case"),
                 raw_snippet=hit.snippet,
             )
         )
@@ -117,3 +119,76 @@ def tag_file_roles(file_paths: list[str]) -> dict[str, str]:
         except (json.JSONDecodeError, KeyError):
             roles.update({p: "other" for p in batch})  # fail safe per-batch, not whole scan
     return roles
+
+RECS_SYSTEM_PROMPT = """You suggest specific, ready-to-paste AI prompts that help a vibe coder
+enhance their existing project inside tools like Lovable, Replit, or Bolt.
+
+You'll get: a list of files with their architecture role, and the stated purpose of the project
+(business, project/portfolio, entertainment, or other - may be missing).
+
+Return ONLY a JSON array of 4-6 strings, no prose, no markdown fences. Each string is a complete,
+specific prompt the user could paste directly into their AI coding tool - not generic advice.
+Tailor prompts to the actual roles present (e.g. if there's an auth file, suggest a prompt about
+adding password reset; if it's a business/commerce purpose, suggest a prompt about adding payment
+receipts or admin analytics). If purpose is missing, keep prompts general-purpose but still specific
+to the files given."""
+
+
+def generate_recommendations(files: list, purpose: str | None) -> list[str]:
+    if not files:
+        return []
+
+    file_summary = [{"path": f.path, "role": f.role} for f in files]
+    user_content = json.dumps({"purpose": purpose or "not specified", "files": file_summary})
+
+    resp = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[
+            {"role": "system", "content": RECS_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
+        temperature=0.5,
+        max_tokens=1000,
+    )
+
+    raw = resp.choices[0].message.content.strip()
+    raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+
+    try:
+        parsed = json.loads(raw)
+        return [str(p) for p in parsed][:6]
+    except json.JSONDecodeError:
+        print(f"[generate_recommendations] JSON PARSE FAILED. Raw response was:\n{raw[:500]}")
+        return []
+    
+FIX_FILE_SYSTEM_PROMPT = """You are a security engineer. You will receive the FULL current content of a
+source file and a description of one specific security flaw in it. Rewrite the ENTIRE file with ONLY
+that flaw fixed - preserve all other code, formatting, comments, and behavior exactly as-is.
+
+Return ONLY the complete corrected file content, no prose, no markdown fences, no explanations.
+Do not truncate the file. Do not add comments about what you changed."""
+
+
+def generate_fixed_file(full_file_content: str, category: str, plain_explanation: str, how_to_fix: str, raw_snippet: str) -> str:
+    user_content = (
+        f"CATEGORY: {category}\n"
+        f"ISSUE: {plain_explanation}\n"
+        f"HOW TO FIX: {how_to_fix}\n"
+        f"VULNERABLE LINE(S): {raw_snippet}\n\n"
+        f"FULL FILE CONTENT:\n{full_file_content}"
+    )
+
+    resp = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[
+            {"role": "system", "content": FIX_FILE_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
+        temperature=0,
+        max_tokens=8000,
+    )
+
+    raw = resp.choices[0].message.content.strip()
+    raw = raw.removeprefix("```python").removeprefix("```javascript").removeprefix("```typescript").removeprefix("```json").removeprefix("```")
+    raw = raw.removesuffix("```").strip()
+    return raw

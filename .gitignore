@@ -4,3 +4,4 @@
 **/node_modules/
 frontend/dist/
 *.pyc
+**/vibe_reviewer.db

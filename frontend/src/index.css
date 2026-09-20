@@ -4,55 +4,66 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.5rem;
-  --background: #F6F5F1;
-  --foreground: #1C2430;
+  --radius: 0.625rem;
+  --background: #FAFAF9;
+  --foreground: #14181F;
   --card: #FFFFFF;
-  --card-foreground: #1C2430;
+  --card-foreground: #14181F;
   --popover: #FFFFFF;
-  --popover-foreground: #1C2430;
-  --primary: #2F5F8A;
-  --primary-foreground: #F6F5F1;
-  --secondary: #EAE8E1;
-  --secondary-foreground: #1C2430;
-  --muted: #EAE8E1;
-  --muted-foreground: #5C6470;
-  --accent: #EAE8E1;
-  --accent-foreground: #2F5F8A;
+  --popover-foreground: #14181F;
+  --primary: #1D3557;
+  --primary-foreground: #F8FAFC;
+  --secondary: #F1F0EC;
+  --secondary-foreground: #14181F;
+  --muted: #F1F0EC;
+  --muted-foreground: #6B7280;
+  --accent: #EEF2F7;
+  --accent-foreground: #1D3557;
   --destructive: #B23B3B;
-  --border: #DAD7CD;
-  --input: #DAD7CD;
-  --ring: #2F5F8A;
+  --border: #E5E3DD;
+  --input: #E5E3DD;
+  --ring: #1D3557;
 
   --color-critical: #B23B3B;
   --color-warning: #C8781E;
-  --color-clear: #3F7D58;
-  --color-blueprint: #2F5F8A;
+  --color-clear: #2E7D5B;
+  --color-blueprint: #1D3557;
+
+  --sidebar-bg: #0F172A;
+  --sidebar-border: #1E293B;
+  --sidebar-fg: #CBD5E1;
+  --sidebar-fg-muted: #64748B;
+  --sidebar-active-bg: #1E293B;
+  --sidebar-active-fg: #F8FAFC;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md: 0 2px 8px -1px rgb(0 0 0 / 0.06), 0 1px 3px -1px rgb(0 0 0 / 0.04);
+  --shadow-lg: 0 8px 24px -4px rgb(0 0 0 / 0.08), 0 2px 6px -2px rgb(0 0 0 / 0.04);
 }
 
 .dark {
-  --background: #14181F;
-  --foreground: #ECEAE3;
-  --card: #1C2430;
-  --card-foreground: #ECEAE3;
-  --popover: #1C2430;
-  --popover-foreground: #ECEAE3;
-  --primary: #5C9CCB;
-  --primary-foreground: #14181F;
-  --secondary: #232B38;
-  --secondary-foreground: #ECEAE3;
-  --muted: #232B38;
-  --muted-foreground: #8B93A0;
-  --accent: #232B38;
-  --accent-foreground: #5C9CCB;
+  --background: #0B0F17;
+  --foreground: #E5E7EB;
+  --card: #131A26;
+  --card-foreground: #E5E7EB;
+  --popover: #131A26;
+  --popover-foreground: #E5E7EB;
+  --primary: #6E97C7;
+  --primary-foreground: #0B0F17;
+  --secondary: #1A2331;
+  --secondary-foreground: #E5E7EB;
+  --muted: #1A2331;
+  --muted-foreground: #8B95A5;
+  --accent: #1A2331;
+  --accent-foreground: #6E97C7;
   --destructive: #D96565;
-  --border: #2A3340;
-  --input: #2A3340;
-  --ring: #5C9CCB;
+  --border: #232E3F;
+  --input: #232E3F;
+  --ring: #6E97C7;
 }
 
 @theme inline {
-  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", "Public Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --color-background: var(--background);
@@ -89,15 +100,27 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  h1, h2, h3 {
+    letter-spacing: -0.01em;
   }
 }
 
 .blueprint-grid {
   background-image:
-    linear-gradient(rgba(47, 95, 138, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(47, 95, 138, 0.08) 1px, transparent 1px);
+    linear-gradient(rgba(29, 53, 87, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 53, 87, 0.06) 1px, transparent 1px);
   background-size: 24px 24px;
+}
+
+.card-elevated {
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
+}
+.card-elevated:hover {
+  box-shadow: var(--shadow-md);
 }
 
 @keyframes stamp-in {
@@ -107,4 +130,12 @@
 }
 .animate-stamp {
   animation: stamp-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.35s ease-out forwards;
 }

@@ -24,6 +24,7 @@ class Finding(BaseModel):
     example: str
     how_to_fix: str
     fix_code_hint: Optional[str] = None
+    test_case: Optional[str] = None
     raw_snippet: Optional[str] = None
 
 class FileNode(BaseModel):
@@ -41,3 +42,6 @@ class ScanReport(BaseModel):
     mermaid: Optional[str] = None
     files_scanned: int = 0
     error: Optional[str] = None
+    purpose: Optional[str] = None
+    recommendations: list[str] = []
+    repo_url: Optional[str] = None

@@ -1,0 +1,86 @@
+import { useState } from "react";
+import { InputPanel } from "@/components/InputPanel";
+import { ScanProgress } from "@/components/ScanProgress";
+import { ReportView } from "@/components/ReportView";
+import { startScan, startScanFromFile } from "@/api/client";
+import type { ScanReport, Purpose } from "@/types";
+
+type ViewState = "input" | "scanning" | "report";
+
+function ScannerPage() {
+  const [view, setView] = useState<ViewState>("input");
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [report, setReport] = useState<ScanReport | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [purpose, setPurpose] = useState<Purpose | null>(null);
+
+  const handleSubmitUrl = async (url: string, p: Purpose | null) => {
+    setIsSubmitting(true);
+    setError(null);
+    setPurpose(p);
+    try {
+      const res = await startScan(url);
+      setJobId(res.job_id);
+      setView("scanning");
+    } catch {
+      setError("Couldn't reach the scan service. Is the backend running?");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitFile = async (file: File, p: Purpose | null) => {
+    setIsSubmitting(true);
+    setError(null);
+    setPurpose(p);
+    try {
+      const res = await startScanFromFile(file);
+      setJobId(res.job_id);
+      setView("scanning");
+    } catch {
+      setError("Couldn't reach the scan service. Is the backend running?");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  
+
+  const reset = () => {
+    setView("input");
+    setJobId(null);
+    setReport(null);
+    setError(null);
+  };
+
+  return (
+    <main className="px-4 py-12">
+      {view === "input" && (
+        <>
+          <InputPanel onSubmitUrl={handleSubmitUrl} onSubmitFile={handleSubmitFile} isSubmitting={isSubmitting} />
+          {error && <p className="text-center text-sm text-destructive mt-4">{error}</p>}
+        </>
+      )}
+
+      {view === "scanning" && jobId && (
+        <ScanProgress
+          jobId={jobId}
+          onComplete={(r) => {
+            setReport(r);
+            setView("report");
+          }}
+          onFailed={(err) => {
+            setError(err);
+            setView("input");
+          }}
+        />
+      )}
+
+      {view === "report" && report && <ReportView report={report} onReset={reset} initialPurpose={purpose} />}
+    </main>
+  );
+}
+
+export default ScannerPage;
