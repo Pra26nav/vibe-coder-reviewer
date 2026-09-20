@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, GitPullRequest, Loader2, Copy, Check } from "lucide-react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { Finding } from "@/types";
 import { applyFix } from "@/api/client";
 
@@ -26,6 +28,15 @@ const CATEGORY_LABELS: Record<string, string> = {
   secret_exposure: "Exposed secret",
 };
 
+function guessLanguage(filePath: string): string {
+  if (filePath.endsWith(".py")) return "python";
+  if (filePath.endsWith(".ts") || filePath.endsWith(".tsx")) return "typescript";
+  if (filePath.endsWith(".js") || filePath.endsWith(".jsx")) return "javascript";
+  if (filePath.endsWith(".json")) return "json";
+  if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) return "yaml";
+  return "text";
+}
+
 interface FindingCardProps {
   finding: Finding;
   jobId: string;
@@ -38,6 +49,8 @@ export function FindingCard({ finding, jobId, canApplyFix }: FindingCardProps) {
   const [prUrl, setPrUrl] = useState<string | null>(null);
   const [applyError, setApplyError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const language = guessLanguage(finding.file_path);
 
   const handleApplyFix = async () => {
     setApplying(true);
@@ -64,7 +77,7 @@ export function FindingCard({ finding, jobId, canApplyFix }: FindingCardProps) {
   };
 
   return (
-    <div className="flex border border-border rounded-md bg-card overflow-hidden transition-shadow hover:shadow-sm">
+    <div className="flex border border-border rounded-md bg-card overflow-hidden transition-shadow hover:shadow-md">
       <div className={`w-1.5 shrink-0 ${FLAG_COLOR[finding.severity] || "bg-muted"}`} />
       <div className="flex-1 p-4 space-y-2">
         <div className="flex items-start justify-between gap-3">
@@ -95,20 +108,46 @@ export function FindingCard({ finding, jobId, canApplyFix }: FindingCardProps) {
               className="flex items-center gap-1 text-xs text-primary hover:underline mt-1"
             >
               <ChevronDown size={14} className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
-              Show technical details
+              Show before / after
             </button>
             <div
               className={`grid transition-all duration-200 ease-out ${expanded ? "grid-rows-[1fr] opacity-100 mt-2" : "grid-rows-[0fr] opacity-0"}`}
             >
-              <div className="overflow-hidden">
+              <div className="overflow-hidden space-y-2">
+                {finding.raw_snippet && (
+                  <div>
+                    <p className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--color-critical)] mb-1">
+                      Before
+                    </p>
+                    <div className="rounded-md overflow-hidden border border-[color:var(--color-critical)]/30">
+                      <SyntaxHighlighter
+                        language={language}
+                        style={oneDark}
+                        customStyle={{ margin: 0, fontSize: "0.75rem", padding: "0.75rem" }}
+                      >
+                        {finding.raw_snippet}
+                      </SyntaxHighlighter>
+                    </div>
+                  </div>
+                )}
+
                 <div className="relative">
-                  <pre className="bg-secondary rounded-md p-3 pr-10 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
-                    {finding.fix_code_hint}
-                  </pre>
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--color-clear)] mb-1">
+                    After
+                  </p>
+                  <div className="rounded-md overflow-hidden border border-[color:var(--color-clear)]/30">
+                    <SyntaxHighlighter
+                      language={language}
+                      style={oneDark}
+                      customStyle={{ margin: 0, fontSize: "0.75rem", padding: "0.75rem", paddingRight: "2.5rem" }}
+                    >
+                      {finding.fix_code_hint}
+                    </SyntaxHighlighter>
+                  </div>
                   <button
                     onClick={handleCopy}
                     title="Copy fix"
-                    className="absolute top-2 right-2 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                    className="absolute top-6 right-2 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
                   >
                     {copied ? <Check size={13} /> : <Copy size={13} />}
                   </button>
