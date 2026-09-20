@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from app.models.schemas import FileNode
+from app.models.schemas import FileNode, Finding
 from app.services.llm_client import tag_file_roles
 
 PY_IMPORT = re.compile(r"^\s*(?:from\s+([\w.]+)\s+import|import\s+([\w.]+))", re.MULTILINE)
@@ -35,29 +35,43 @@ def build_graph(files: dict[str, str], root: Path) -> list[FileNode]:
     return nodes
 
 
-def to_mermaid(nodes: list[FileNode]) -> str:
-    """Fallback caller should catch exceptions and use table view instead."""
+SEVERITY_RANK = {"critical": 3, "high": 3, "medium": 2, "low": 1}
+SEVERITY_COLOR = {
+    3: "fill:#c0392b",
+    2: "fill:#d35400",
+    1: "fill:#b7950b",
+}
+CLEAN_COLOR = "fill:#1e8449"
+
+
+def to_mermaid(nodes: list[FileNode], findings: list[Finding] | None = None) -> str:
+    """Fallback caller should catch exceptions and use table view instead.
+    Nodes colored by risk (worst finding severity on that file) rather than just role."""
     lines = ["graph LR"]
-    role_class = {
-        "frontend": "fill:#61dafb",
-        "backend-api": "fill:#68a063",
-        "auth": "fill:#e74c3c",
-        "db": "fill:#f39c12",
-        "config": "fill:#95a5a6",
-        "other": "fill:#bdc3c7",
-    }
+    findings = findings or []
+
+    risk_by_file: dict[str, int] = {}
+    for f in findings:
+        rank = SEVERITY_RANK.get(f.severity, 1)
+        if f.file_path not in risk_by_file or rank > risk_by_file[f.file_path]:
+            risk_by_file[f.file_path] = rank
+
     safe_id = lambda p: re.sub(r"[^a-zA-Z0-9]", "_", p)
+    display_path = lambda p: p.replace("\\", "/")
 
     for node in nodes:
         nid = safe_id(node.path)
-        lines.append(f'  {nid}["{node.path}"]')
-        lines.append(f"  style {nid} {role_class.get(node.role, '')}")
+        label = display_path(node.path)
+        rank = risk_by_file.get(node.path)
+        style = SEVERITY_COLOR.get(rank, CLEAN_COLOR) if rank else CLEAN_COLOR
+        marker = " (risk)" if rank else ""
+        lines.append(f'  {nid}["{label}{marker}"]')
+        lines.append(f"  style {nid} {style}")
 
     path_lookup = {n.path: safe_id(n.path) for n in nodes}
     for node in nodes:
         src_id = safe_id(node.path)
         for imp in node.imports:
-            # best-effort match of local import string to actual file node
             for target_path, target_id in path_lookup.items():
                 if imp.strip("./").replace(".", "/") in target_path:
                     lines.append(f"  {src_id} --> {target_id}")

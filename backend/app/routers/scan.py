@@ -101,7 +101,7 @@ def run_pipeline(job_id: str, repo_url: str | None, zip_bytes: bytes | None, use
         # 3. architecture graph
         nodes = build_graph(contents, root)
         try:
-            mermaid = to_mermaid(nodes)
+            mermaid = to_mermaid(nodes, findings)
         except Exception:
             mermaid = None  # frontend falls back to table view
 
